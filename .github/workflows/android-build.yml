@@ -1,0 +1,223 @@
+name: Build Apk Auto Session
+
+on:
+  push:
+    branches:
+      - dev
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build Android APK
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          flutter-version: '3.29.1'
+          cache: true
+
+      - name: Flutter dependencies
+        run: flutter pub get
+
+#      # 1. Cache tools
+#      - name: Cache Pub packages
+#        uses: actions/cache@v3
+#        with:
+#          path: ~/.pub-cache
+#          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+#          restore-keys: |
+#            ${{ runner.os }}-pub-
+#
+#      # 2. Install tools (instant if cached)
+#      - name: Install change_app_package_name and flutter_launcher_icons
+#        run: |
+#          flutter pub add change_app_package_name
+#          flutter pub add flutter_launcher_icons
+#
+#      # 3. Run the rename
+#      - name: Apply package name
+#        run: flutter pub run change_app_package_name:main $APP_ID
+#
+#      # 4. Generate setup_media
+#      - name: Apply App Icon
+#        if: env.ICON_PATH != ''
+#        run: flutter pub run flutter_launcher_icons:main
+
+
+
+      # ---------- Cache ----------
+      - name: Cache Pub packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-
+
+      # ---------- Load Config ----------
+      - name: Load app configuration
+        id: cfg
+        run: |
+          APP_ID=$(jq -r '.applicationId' assets/config.json)
+          APP_NAME=$(jq -r '.app_name' assets/config.json)
+          ICON_PATH=$(jq -r '.icon_path // empty' assets/config.json)
+          
+          echo "APP_ID=$APP_ID" >> $GITHUB_ENV
+          echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
+          echo "ICON_PATH=$ICON_PATH" >> $GITHUB_ENV
+
+      # ---------- Install Tools ----------
+      - name: Install change_app_package_name
+        run: flutter pub add change_app_package_name
+
+      - name: Install setup_media setup_media (optional)
+        run: flutter pub add flutter_launcher_icons
+
+      # ---------- Apply Package Rename ----------
+      - name: Apply package name
+        run: flutter pub run change_app_package_name:main $APP_ID
+
+      # ---------- Apply App Name ----------
+      - name: Apply app name (Android)
+        run: sed -i "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">$APP_NAME</string>|" android/app/src/main/res/values/strings.xml
+
+      - name: Apply app name (iOS)
+        if: runner.os == 'macOS'
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_NAME" ios/Runner/Info.plist
+
+      # ---------- Apply App Icon ----------
+      - name: Generate setup_media icon config
+        if: env.ICON_PATH != ''
+        run: |
+          cat <<EOF > flutter_launcher_icons.yaml
+          flutter_icons:
+            android: true
+            ios: true
+            image_path: "$ICON_PATH"
+          EOF
+
+      - name: Apply App Icon
+        if: env.ICON_PATH != ''
+        run: flutter pub run flutter_launcher_icons:main
+
+    #      - name: Run tests
+#        run: flutter test
+
+#      - name: Decode keystore
+#        run: |
+#          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+
+      - name: Build APK
+        run: flutter build apk
+#        env:
+#          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+#          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+#          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+#      - name: Build signed AppBundle
+#        run: flutter build appbundle  --release
+#        env:
+#          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+#          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+#          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Extract app version
+        id: app_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | cut -d'+' -f1)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Rename artifacts
+        run: |
+          mv build/app/outputs/flutter-apk/app-release.apk \
+             build/app/outputs/flutter-apk/autoBuild_v${{ steps.app_version.outputs.version }}.apk
+          
+#          mv build/app/outputs/bundle/release/app-release.aab \
+#             build/app/outputs/bundle/release/autoBuild_v${{ steps.app_version.outputs.version }}.aab
+
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: autoBuild_v${{ steps.app_version.outputs.version }}_apk
+          path: build/app/outputs/flutter-apk/autoBuild_v${{ steps.app_version.outputs.version }}.apk
+
+#      # 📦 Upload AAB
+#      - name: Upload AAB
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: autoBuild_v${{ steps.app_version.outputs.version }}_aab
+#          path: build/app/outputs/bundle/release/autoBuild_v${{ steps.app_version.outputs.version }}.aab
+
+      - name: Create GitHub Release
+        if: success()
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.app_version.outputs.version }}
+          name: AutoBuild v${{ steps.app_version.outputs.version }}
+          body: |
+            ✅ Android build ready
+            
+            Commit: ${{ github.sha }}
+            Branch: ${{ github.ref_name }}
+
+          files: |
+            build/app/outputs/flutter-apk/autoBuild_v${{ steps.app_version.outputs.version }}.apk
+#            build/app/outputs/bundle/release/autoBuild_v${{ steps.app_version.outputs.version }}.aab
+
+      - name: Send APK email notification
+        if: success()
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.gmail.com
+          server_port: 587
+          username: ${{ secrets.SMTP_USERNAME }}
+          password: ${{ secrets.SMTP_PASSWORD }}
+
+          subject: >
+            ✅ Android APK ${{ job.status }} – Auto Build Apk
+
+          to: ${{ secrets.EMAIL_TO_APK }}
+          from: Auto Build Apk CI <${{ secrets.SMTP_USERNAME }}>
+
+          body: |
+            Hello 👋,
+            I am CI/CD Bot 🤖. I am guided to deliver the apk once ready by the Developer.
+            
+            ✅ Build Status: ${{ job.status }}
+            📱 App: Auto Build Apk
+            🔢 Build Number: ${{ github.run_number }}
+
+            ⬇ Direct Downloads:
+              APK:
+              https://github.com/${{ github.repository }}/releases/download/v${{ github.run_number }}/app-release.apk
+
+            📦 Public Downloads:
+            https://github.com/${{ github.repository }}/releases
+
+            🔗 GitHub Run Details:
+            https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            
+            📦 Find Apk Here :
+            https://github.com/${{ github.repository }}/releases
+            
+            Regards,
+            Satyam Ojha
+            Mobile Application Engineer
