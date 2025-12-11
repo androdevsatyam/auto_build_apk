@@ -147,31 +147,31 @@ jobs:
       - name: Rename artifacts
         run: |
           mv build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/autoBuild_v${{ steps.app_version.outputs.version }}.apk
+             build/app/outputs/flutter-apk/APP_NAME_v${{ steps.app_version.outputs.version }}.apk
           
 #          mv build/app/outputs/bundle/release/app-release.aab \
-#             build/app/outputs/bundle/release/autoBuild_v${{ steps.app_version.outputs.version }}.aab
+#             build/app/outputs/bundle/release/APP_NAME_v${{ steps.app_version.outputs.version }}.aab
 
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: autoBuild_v${{ steps.app_version.outputs.version }}_apk
-          path: build/app/outputs/flutter-apk/autoBuild_v${{ steps.app_version.outputs.version }}.apk
+          name: APP_NAME_v${{ steps.app_version.outputs.version }}_apk
+          path: build/app/outputs/flutter-apk/APP_NAME_v${{ steps.app_version.outputs.version }}.apk
 
 #      # 📦 Upload AAB
 #      - name: Upload AAB
 #        uses: actions/upload-artifact@v4
 #        with:
-#          name: autoBuild_v${{ steps.app_version.outputs.version }}_aab
-#          path: build/app/outputs/bundle/release/autoBuild_v${{ steps.app_version.outputs.version }}.aab
+#          name: APP_NAME_v${{ steps.app_version.outputs.version }}_aab
+#          path: build/app/outputs/bundle/release/APP_NAME_v${{ steps.app_version.outputs.version }}.aab
 
       - name: Create GitHub Release
         if: success()
         uses: softprops/action-gh-release@v1
         with:
           tag_name: v${{ steps.app_version.outputs.version }}
-          name: AutoBuild v${{ steps.app_version.outputs.version }}
+          name: APP_NAME v${{ steps.app_version.outputs.version }}
           body: |
             ✅ Android build ready
             
@@ -179,8 +179,8 @@ jobs:
             Branch: ${{ github.ref_name }}
 
           files: |
-            build/app/outputs/flutter-apk/autoBuild_v${{ steps.app_version.outputs.version }}.apk
-#            build/app/outputs/bundle/release/autoBuild_v${{ steps.app_version.outputs.version }}.aab
+            build/app/outputs/flutter-apk/APP_NAME_v${{ steps.app_version.outputs.version }}.apk
+#            build/app/outputs/bundle/release/APP_NAME_v${{ steps.app_version.outputs.version }}.aab
 
       - name: Send APK email notification
         if: success()
