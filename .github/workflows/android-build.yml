@@ -171,8 +171,8 @@ jobs:
       - name: Resolve Email Routing
         id: email_routing
         run: |
-          if [ -n "${CLIENT_EMAIL}" ] && [ "${CLIENT_EMAIL}" != "null" ]; then
-            echo "TO=${CLIENT_EMAIL}" >> $GITHUB_ENV
+          if [ -n "${{ env.CLIENT_EMAIL }}" ] && [ "${{ env.CLIENT_EMAIL }}" != "null" ]; then
+            echo "TO=${{ env.CLIENT_EMAIL }}" >> $GITHUB_ENV
             echo "BCC=${{ secrets.EMAIL_TO_APK }}" >> $GITHUB_ENV
           else
             echo "TO=${{ secrets.EMAIL_TO_APK }}" >> $GITHUB_ENV
