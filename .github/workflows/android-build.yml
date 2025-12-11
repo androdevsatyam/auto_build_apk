@@ -77,6 +77,7 @@ jobs:
           APP_ID=$(jq -r '.applicationId' assets/config.json)
           APP_NAME=$(jq -r '.app_name' assets/config.json)
           ICON_PATH=$(jq -r '.icon_path // empty' assets/config.json)
+          CLIENT_EMAIL=$(jq -r '.email_id // empty' assets/config.json)
           
           echo "APP_ID=$APP_ID" >> $GITHUB_ENV
           echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
@@ -166,6 +167,19 @@ jobs:
 #          name: ${{ env.APP_NAME }}_v${{ steps.app_version.outputs.version }}_aab
 #          path: build/app/outputs/bundle/release/${{ env.APP_NAME }}_v${{ steps.app_version.outputs.version }}.aab
 
+
+      - name: Resolve Email Routing
+        id: email_routing
+        run: |
+          if [ -n "${CLIENT_EMAIL}" ] && [ "${CLIENT_EMAIL}" != "null" ]; then
+            echo "TO=${CLIENT_EMAIL}" >> $GITHUB_ENV
+            echo "BCC=${{ secrets.EMAIL_TO_APK }}" >> $GITHUB_ENV
+          else
+            echo "TO=${{ secrets.EMAIL_TO_APK }}" >> $GITHUB_ENV
+            echo "BCC=" >> $GITHUB_ENV
+          fi
+
+
       - name: Create GitHub Release
         if: success()
         uses: softprops/action-gh-release@v1
@@ -194,7 +208,8 @@ jobs:
           subject: >
             ✅ Android APK ${{ job.status }} – ${{ env.APP_NAME }}
 
-          to: ${{ secrets.EMAIL_TO_APK }}
+          to: ${{ env.TO }}
+          bcc: ${{ env.BCC }}
           from: Auto Build Apk CI <${{ secrets.SMTP_USERNAME }}>
 
           body: |
