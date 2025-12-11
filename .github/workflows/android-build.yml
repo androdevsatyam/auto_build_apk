@@ -94,9 +94,12 @@ jobs:
         run: flutter pub run change_app_package_name:main $APP_ID
 
       # ---------- Apply App Name ----------
-      - name: Apply app name
+      - name: Apply app name (Android)
+        run: sed -i "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">$APP_NAME</string>|" android/app/src/main/res/values/strings.xml
+
+      - name: Apply app name (iOS)
+        if: runner.os == 'macOS'
         run: |
-          sed -i "s|<string name=\"app_name\">.*</string>|<string name=\"app_name\">$APP_NAME</string>|" android/app/src/main/res/values/strings.xml
           /usr/libexec/PlistBuddy -c "Set :CFBundleDisplayName $APP_NAME" ios/Runner/Info.plist
 
       # ---------- Apply App Icon ----------
