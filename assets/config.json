@@ -1,5 +1,5 @@
 {
-  "app_name":"MyApp",
-  "applicationId":"package_name",
+  "app_name":"AutoApp",
+  "applicationId":"com.androdevsatyam.autoapp",
   "icon_path": "assets/setup_media/app_icon.png"
 }
