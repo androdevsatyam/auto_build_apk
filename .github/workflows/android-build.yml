@@ -74,9 +74,9 @@ jobs:
       - name: Load app configuration
         id: cfg
         run: |
-          APP_ID=$(jq -r '.applicationId' config.json)
-          APP_NAME=$(jq -r '.app_name' config.json)
-          ICON_PATH=$(jq -r '.icon_path // empty' config.json)
+          APP_ID=$(jq -r '.applicationId' assets/config.json)
+          APP_NAME=$(jq -r '.app_name' assets/config.json)
+          ICON_PATH=$(jq -r '.icon_path // empty' assets/config.json)
           
           echo "APP_ID=$APP_ID" >> $GITHUB_ENV
           echo "APP_NAME=$APP_NAME" >> $GITHUB_ENV
