@@ -1,0 +1,5 @@
+{
+  "app_name":"MyApp",
+  "applicationId":"package_name",
+  "icon_path": "assets/setup_media/app_icon.png"
+}
